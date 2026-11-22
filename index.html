@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en" data-skin="bold">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#efe9da">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0c0a">
+<meta name="description" content="Six measures of reaction speed and memory.">
+<title>Reaction Time</title>
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230d0c0a'/%3E%3Ccircle cx='16' cy='16' r='8' fill='%23c8f53a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400..500&family=Geist:wght@300..700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>try{var d=document.documentElement,t=localStorage.getItem('reaction-time.theme'),s=localStorage.getItem('reaction-time.skin');if(t==='light'||t==='dark')d.dataset.theme=t;if(s==='calm')d.dataset.skin=s}catch(e){}</script>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/bold.css">
+</head>
+<body>
+<header class="top">
+  <a class="wordmark" href="#/">Reaction Time</a>
+  <nav id="nav" aria-label="Tests"></nav>
+  <div class="tools">
+    <button type="button" class="theme skin" id="skin"></button>
+    <button type="button" class="theme" id="theme"></button>
+  </div>
+</header>
+<main id="view"></main>
+<script src="js/app.js"></script>
+<script>
+(() => {
+  const r = document.documentElement, b = document.getElementById('theme'), s = document.getElementById('skin'), ic = document.querySelector('link[rel=icon]'), o = ['auto', 'light', 'dark'], k = 'reaction-time.theme', ks = 'reaction-time.skin';
+  const ico = {
+    bold: ic.getAttribute('href'),
+    calm: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230d1211'/%3E%3Ccircle cx='16' cy='16' r='8.5' fill='none' stroke='%237be0b0' stroke-width='3' stroke-linecap='round' stroke-dasharray='40 53.4' transform='rotate(-90 16 16)'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%237be0b0'/%3E%3C/svg%3E"
+  };
+  const faces = {
+    bold: ['400 1em "Instrument Serif"', 'italic 400 1em "Instrument Serif"', '400 1em "JetBrains Mono"', '500 1em "JetBrains Mono"'],
+    calm: ['400 1em Geist', '500 1em "Geist Mono"']
+  };
+  let t = r.dataset.theme || 'auto', n = r.dataset.skin === 'calm' ? 'calm' : 'bold';
+  const bar = () => {
+    const c = getComputedStyle(document.body).backgroundColor;
+    document.querySelectorAll('meta[name=theme-color]').forEach(m => { m.content = c; });
+  };
+  const set = () => {
+    if (t === 'auto') delete r.dataset.theme; else r.dataset.theme = t;
+    r.dataset.skin = n;
+    b.dataset.mode = t;
+    b.setAttribute('aria-label', 'Theme: ' + t);
+    s.dataset.mode = n;
+    s.setAttribute('aria-label', 'Style: ' + n);
+    ic.href = ico[n];
+    bar();
+  };
+  const warm = x => document.fonts
+    ? Promise.race([Promise.all(faces[x].map(f => document.fonts.load(f))), new Promise(d => setTimeout(d, 600))]).catch(() => {})
+    : Promise.resolve();
+  const swap = () => {
+    if (!document.startViewTransition || document.querySelector('.running') || matchMedia('(prefers-reduced-motion: reduce)').matches) set();
+    else document.startViewTransition(set);
+  };
+  set();
+  b.addEventListener('click', () => {
+    t = o[(o.indexOf(t) + 1) % 3];
+    swap();
+    try { if (t === 'auto') localStorage.removeItem(k); else localStorage.setItem(k, t); } catch (e) {}
+    b.blur();
+  });
+  s.addEventListener('click', () => {
+    const x = n === 'bold' ? 'calm' : 'bold';
+    s.blur();
+    warm(x).then(() => {
+      n = x;
+      swap();
+      try { localStorage.setItem(ks, n); } catch (e) {}
+    });
+  });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', bar);
+  setTimeout(() => warm(n === 'bold' ? 'calm' : 'bold'), 900);
+})();
+</script>
+</body>
+</html>
