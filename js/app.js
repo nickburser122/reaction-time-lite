@@ -18,6 +18,9 @@
     }
     return a;
   };
+  const clean = a => (Array.isArray(a) ? a : [])
+    .filter(r => r && typeof r.s === 'number' && isFinite(r.s) && r.s >= 0)
+    .map(r => ({ s: r.s, t: typeof r.t === 'number' && isFinite(r.t) ? r.t : 0 }));
 
   function h(tag, props, ...kids) {
     const n = document.createElement(tag);
@@ -56,6 +59,27 @@
     },
     any() {
       return Object.values(this.all()).some(a => Array.isArray(a) && a.length);
+    },
+    merge(src) {
+      const d = this.all();
+      let added = 0;
+      for (const t of TESTS) {
+        const cur = clean(d[t.id]);
+        const seen = new Set(cur.map(r => r.t + ':' + r.s));
+        const fresh = clean(src[t.id]).filter(r => {
+          const k = r.t + ':' + r.s;
+          return !seen.has(k) && seen.add(k);
+        });
+        if (!fresh.length) continue;
+        const next = cur.concat(fresh).sort((a, b) => a.t - b.t).slice(-200);
+        const kept = next.filter(r => fresh.includes(r)).length;
+        if (!kept) continue;
+        d[t.id] = next;
+        added += kept;
+      }
+      if (!added) return 0;
+      try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) { return -1; }
+      return added;
     },
     clear() {
       try { localStorage.removeItem(KEY); } catch (e) {}
@@ -197,6 +221,128 @@
     sc.on(field, 'pointerdown', e => { e.preventDefault(); press(); });
     sc.on(document, 'keydown', e => { if (isPress(e)) { e.preventDefault(); press(); } });
     next();
+  }
+
+  function series(sc, total, expect, paint, count, finish) {
+    const log = [];
+    let i = -1;
+    let state = 'gap';
+    let t0 = 0;
+    let timer = 0;
+    const next = () => {
+      if (++i >= total) return finish(log);
+      state = 'gap';
+      paint('fix', i);
+      count.textContent = `${i + 1} / ${total}`;
+      timer = sc.after(rand(600, 1400), show);
+    };
+    const feedback = (ok, rt) => {
+      state = 'fb';
+      sc.cancel(timer);
+      log.push(ok ? rt : null);
+      paint(ok ? 'ok' : 'bad', i);
+      sc.after(ok ? 260 : 520, next);
+    };
+    const show = () => {
+      state = 'pre';
+      paint('cue', i);
+      sc.frame(() => {
+        if (state !== 'pre') return;
+        t0 = performance.now();
+        state = 'live';
+        timer = sc.after(2500, () => feedback(false));
+      });
+    };
+    next();
+    return answer => {
+      const rt = performance.now() - t0;
+      if (state === 'live') feedback(rt >= 100 && answer === expect(i), rt);
+    };
+  }
+
+  const tally = log => {
+    const rts = log.filter(v => v != null);
+    const acc = Math.round(rts.length / log.length * 100);
+    return rts.length * 5 < log.length * 4
+      ? { text: `Accuracy ${acc}% · below 80%, not recorded` }
+      : { mean: avg(rts), text: `Accuracy ${acc}%` };
+  };
+
+  function choice(stage, sc, done) {
+    const TOTAL = 20;
+    const plan = shuffle(Array.from({ length: TOTAL }, (_, i) => i % 2 === 0));
+    const mark = h('div', { class: 'mark' });
+    const count = h('div', { class: 'label corner' });
+    const field = h('div', { class: 'field plain' }, mark, count,
+      h('div', { class: 'label side l', text: '← Left' }),
+      h('div', { class: 'label side r', text: 'Right →' }));
+    stage.replaceChildren(field);
+
+    const paint = (kind, i) => { mark.dataset.kind = kind === 'cue' ? (plan[i] ? 'right' : 'left') : kind; };
+    const press = series(sc, TOTAL, i => plan[i], paint, count, log => {
+      const r = tally(log);
+      done(r.mean, r.mean == null ? r.text : `${r.text} · ${plural(log.filter(v => v == null).length, 'error')}`);
+    });
+    sc.on(field, 'pointerdown', e => {
+      e.preventDefault();
+      const b = field.getBoundingClientRect();
+      press(e.clientX > b.left + b.width / 2);
+    });
+    sc.on(document, 'keydown', e => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      if (!e.repeat) press(e.key === 'ArrowRight');
+    });
+  }
+
+  function stroop(stage, sc, done) {
+    const TOTAL = 20;
+    const NAMES = ['Red', 'Green', 'Blue', 'Yellow'];
+    const KEYS = 'rgby';
+    const CODES = ['KeyR', 'KeyG', 'KeyB', 'KeyY'];
+    const plan = [];
+    for (const same of shuffle(Array.from({ length: TOTAL }, (_, i) => i < 8))) {
+      let c;
+      do { c = Math.floor(Math.random() * 4); } while (plan.length && c === plan[plan.length - 1].c);
+      plan.push({ c, w: same ? c : (c + 1 + Math.floor(Math.random() * 3)) % 4, same });
+    }
+    const mark = h('div', { class: 'mark' });
+    const word = h('div', { class: 'word', hidden: true });
+    const count = h('div', { class: 'label corner' });
+    const keys = h('div', { class: 'keys' }, NAMES.map((n, i) =>
+      h('button', { class: 'key', type: 'button', 'data-i': i }, h('u', { text: n[0] }), n.slice(1))));
+    stage.replaceChildren(h('div', { class: 'field plain col' }, h('div', { class: 'cue' }, mark, word), keys, count));
+
+    const paint = (kind, i) => {
+      const on = kind === 'cue';
+      if (on) {
+        word.textContent = NAMES[plan[i].w];
+        word.dataset.ink = KEYS[plan[i].c];
+      } else mark.dataset.kind = kind;
+      word.hidden = !on;
+      mark.hidden = on;
+    };
+    const press = series(sc, TOTAL, i => plan[i].c, paint, count, log => {
+      const r = tally(log);
+      if (r.mean == null) return done(null, r.text);
+      const of = same => log.filter((v, i) => v != null && plan[i].same === same);
+      const gap = Math.round(avg(of(false)) - avg(of(true)));
+      done(r.mean, `${r.text} · interference ${gap < 0 ? '−' : '+'}${Math.abs(gap)} ms`);
+    });
+    sc.on(keys, 'pointerdown', e => {
+      const k = e.target.closest('.key');
+      if (k) { e.preventDefault(); press(+k.dataset.i); }
+    });
+    sc.on(keys, 'click', e => {
+      const k = e.target.closest('.key');
+      if (k && e.detail === 0) press(+k.dataset.i);
+    });
+    sc.on(document, 'keydown', e => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const k = e.key.toLowerCase();
+      const i = /^[a-z]$/.test(k) ? KEYS.indexOf(k) : CODES.indexOf(e.code);
+      if (i >= 0) { e.preventDefault(); press(i); }
+    });
   }
 
   function aim(stage, sc, done) {
@@ -402,6 +548,8 @@
   const TESTS = [
     { id: 'reaction', name: 'Reaction', unit: 'ms', lower: true, rule: 'Press the moment the field lights. Five trials.', run: reaction },
     { id: 'inhibit', name: 'Go / No-Go', unit: 'ms', lower: true, rule: 'Press for the disc. Hold for the square.', run: inhibit },
+    { id: 'choice', name: 'Choice', unit: 'ms', lower: true, rule: 'Follow the arrow. Arrow keys or tap that side.', run: choice },
+    { id: 'stroop', name: 'Stroop', unit: 'ms', lower: true, rule: 'Name the ink, not the word. Keys R G B Y.', run: stroop },
     { id: 'aim', name: 'Aim', unit: 'ms', lower: true, rule: 'Hit twenty targets. Mean time per target.', run: aim },
     { id: 'sequence', name: 'Sequence', unit: 'steps', lower: false, rule: 'Repeat the pattern. It grows by one.', run: sequence },
     { id: 'digits', name: 'Digits', unit: 'digits', lower: false, rule: 'Read the number. Type it back.', run: digits },
@@ -437,6 +585,25 @@
     return box;
   }
 
+  let notice = '';
+
+  function exportRecords() {
+    const d = store.all();
+    const records = {};
+    for (const t of TESTS) {
+      const a = clean(d[t.id]);
+      if (a.length) records[t.id] = a;
+    }
+    const now = new Date();
+    const body = JSON.stringify({ app: 'reaction-time', version: 1, exported: now.toISOString(), records }, null, 2);
+    const url = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
+    const a = h('a', { href: url, download: `reaction-time-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`, hidden: true });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
   function homeView() {
     const rows = TESTS.map((t, i) => {
       const s = stats(t);
@@ -465,14 +632,38 @@
       erase.textContent = 'Erase records';
       erase.classList.remove('warn');
     });
+    const has = store.any();
+    const note = notice;
+    notice = '';
+    const save = h('button', { class: 'link label', type: 'button', text: 'Export', onclick: exportRecords });
+    const file = h('input', { type: 'file', accept: '.json,application/json', hidden: true, tabindex: '-1', 'aria-hidden': 'true' });
+    const load = h('button', { class: 'link label load', type: 'button', text: 'Import', onclick: () => file.click() });
+    file.addEventListener('change', async () => {
+      const f = file.files[0];
+      if (!f) return;
+      let msg = 'Not a records file';
+      try {
+        const d = f.size > 2e6 ? null : JSON.parse(await f.text());
+        const src = d && d.records && typeof d.records === 'object' ? d.records : d;
+        if (src && typeof src === 'object' && TESTS.some(t => Array.isArray(src[t.id]))) {
+          const n = store.merge(src);
+          msg = n < 0 ? 'Could not save in this browser' : n ? `Imported ${plural(n, 'run')}` : 'Nothing new to import';
+        }
+      } catch (e) {}
+      if (!file.isConnected) return;
+      notice = msg;
+      view.replaceChildren(homeView());
+      const b = view.querySelector('.load');
+      if (b) b.focus({ preventScroll: true });
+    });
     return h('section', { class: 'home' },
       h('div', { class: 'head' },
         h('h1', null, 'Reaction ', h('em', { text: 'Time' })),
-        h('p', { class: 'label', text: 'Six measures of speed and memory' })),
+        h('p', { class: 'label', text: 'Eight measures of speed and memory' })),
       h('div', { class: 'index' }, rows),
       h('div', { class: 'foot' },
-        h('span', { class: 'label', text: 'Records stay in this browser' }),
-        store.any() && erase));
+        h('span', { class: 'label' + (note ? ' note' : ''), role: 'status', text: note || 'Records stay in this browser' }),
+        h('div', { class: 'acts' }, has && save, load, has && erase, file)));
   }
 
   function testView(t) {

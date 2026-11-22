@@ -1,6 +1,6 @@
 # Reaction Time
 
-Static single-page trainer for reaction speed and memory. English only, no build step, no backend.
+Static single-page trainer for reaction speed and memory, eight tests. English only, no build step, no backend.
 
 ## Themes
 
@@ -24,6 +24,8 @@ Two skins share one layout, one script and one set of sizes.
 | `index.html` or `#/` | Index of all tests with personal bests |
 | `#/reaction` | Reaction: five trials, mean in ms, false starts are retried |
 | `#/inhibit` | Go / No-Go: 24 stimuli (17 go, 7 no-go), mean go time in ms, runs under 80% accuracy are not recorded |
+| `#/choice` | Choice: 20 arrows, left or right, mean ms of correct answers, runs under 80% accuracy are not recorded |
+| `#/stroop` | Stroop: 20 colour words (8 matching, 12 clashing), answer the ink colour, mean ms of correct answers, interference shown per run, runs under 80% accuracy are not recorded |
 | `#/aim` | Aim: 20 targets, mean ms per target, misses counted |
 | `#/sequence` | Sequence: 3x3 pattern that grows by one, score is the longest sequence repeated |
 | `#/digits` | Digits: number span starting at 3 digits, score is the longest number recalled |
@@ -32,6 +34,9 @@ Two skins share one layout, one script and one set of sizes.
 ## Controls
 
 - Space or Enter starts a test and responds in Reaction and Go / No-Go; pointer and touch work everywhere.
+- Choice: Left and Right arrow keys, or tap that half of the stage.
+- Stroop: R, G, B, Y keys, or the four buttons under the word.
+- In Choice and Stroop a wrong answer or no answer within 2.5 s counts as an error; presses before the cue are ignored.
 - Esc or Stop aborts a run; Esc outside a run returns to the index.
 - Each test page shows best, mean, run count and a trend line of the last 24 runs.
 
@@ -39,20 +44,22 @@ Two skins share one layout, one script and one set of sizes.
 
 - `localStorage` key `reaction-time.v1`: `{ [testId]: [{ s: score, t: timestamp }] }`, last 200 runs per test.
 - Records stay in the browser they were made in. "Erase records" on the index removes them after a second confirming click.
+- Export (index footer, shown once there are records) downloads `reaction-time-YYYY-MM-DD.json`: `{ app, version, exported, records }`, where `records` has the same shape as the stored object.
+- Import (index footer) reads such a file, or a raw copy of the stored object, and merges it: existing runs are kept, runs with the same score and timestamp are skipped, each test keeps its latest 200. Files over 2 MB or without any known test are rejected. When a test goes past 200, its oldest runs drop off, which can include runs already in this browser; malformed entries in a merged test are dropped too.
 
 ## Files
 
 - `index.html` shell
-- `css/style.css` visuals
+- `css/style.css` Calm visuals and shared layout
+- `css/bold.css` Bold skin and header tools
 - `js/app.js` router, tests, records
 
 ## Status
 
-- Not yet browser-tested; verification is pending.
+- Choice, Stroop, export and import are implemented but have not been played through in a browser; that pass is still pending, as is the earlier one for the original six tests.
 - Not deployed.
 - The original `datakid/reaction-time` repository was not read; this is a fresh build around the same idea.
 
 ## Possible next steps
 
-- Choice-reaction and Stroop tests
-- Export and import of records
+- None queued. Choice, Stroop, export and import are done.
