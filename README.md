@@ -59,7 +59,3 @@ Two skins share one layout, one script and one set of sizes.
 - Choice, Stroop, export and import are implemented but have not been played through in a browser; that pass is still pending, as is the earlier one for the original six tests.
 - Not deployed.
 - The original `datakid/reaction-time` repository was not read; this is a fresh build around the same idea.
-
-## Possible next steps
-
-- None queued. Choice, Stroop, export and import are done.
