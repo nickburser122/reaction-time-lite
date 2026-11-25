@@ -71,12 +71,3 @@ Two skins share one layout, one script and one set of sizes.
 ## Fonts
 
 The font files are Latin subsets. Arrows and the life dots in Grid are not in them and are drawn by the system font. All four families are published under the SIL Open Font License.
-
-## Deployment
-
-Not deployed. There is no public URL yet.
-
-## Possible next steps
-
-- A service worker, so the app also opens with no connection at all after the first visit.
-- A sound-cued reaction test. Left out for now because audio output delay varies a lot between devices and headphones, which makes the scores hard to compare.
