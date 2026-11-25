@@ -120,7 +120,8 @@
     let timer = 0;
     const big = h('div', { class: 'big' });
     const sub = h('div', { class: 'label' });
-    const pips = h('div', { class: 'pips' });
+    const dots = Array.from({ length: TOTAL }, () => h('i'));
+    const pips = h('div', { class: 'pips' }, dots);
     const field = h('div', { class: 'field' }, h('div', { class: 'readout' }, big, sub), pips);
     stage.replaceChildren(field);
 
@@ -129,7 +130,7 @@
       field.dataset.state = s;
       big.textContent = b;
       sub.textContent = l;
-      pips.replaceChildren(...Array.from({ length: TOTAL }, (_, i) => h('i', { class: i < times.length ? 'on' : '' })));
+      dots.forEach((d, i) => d.classList.toggle('on', i < times.length));
     };
     const arm = () => {
       set('wait', 'Wait', '');
@@ -356,14 +357,16 @@
     stage.replaceChildren(arena);
 
     const place = () => {
-      count.textContent = `${times.length + 1} / ${TOTAL}`;
+      const n = times.length + 1;
       const s = target.offsetWidth || 58;
       const p = 16;
-      target.style.left = p + Math.random() * Math.max(0, arena.clientWidth - s - p * 2) + 'px';
-      target.style.top = p + 28 + Math.random() * Math.max(0, arena.clientHeight - s - p * 2 - 28) + 'px';
-      target.classList.remove('in');
-      void target.offsetWidth;
-      target.classList.add('in');
+      const x = p + Math.random() * Math.max(0, arena.clientWidth - s - p * 2);
+      const y = p + 28 + Math.random() * Math.max(0, arena.clientHeight - s - p * 2 - 28);
+      target.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+      count.textContent = `${n} / ${TOTAL}`;
+      const on = target.classList.contains('in');
+      target.classList.toggle('in', !on);
+      target.classList.toggle('in2', on);
       t0 = performance.now();
       sc.frame(() => { t0 = performance.now(); });
     };
@@ -371,9 +374,9 @@
       e.preventDefault();
       if (e.target !== target) {
         misses++;
-        arena.classList.remove('miss');
-        void arena.offsetWidth;
-        arena.classList.add('miss');
+        const on = arena.classList.contains('miss');
+        arena.classList.toggle('miss', !on);
+        arena.classList.toggle('miss2', on);
         return;
       }
       times.push(performance.now() - t0);
@@ -422,9 +425,9 @@
         sc.after(1000, () => done(seq.length - 1, `Missed step ${step} of ${seq.length}`));
         return;
       }
-      c.classList.remove('tap');
-      void c.offsetWidth;
-      c.classList.add('tap');
+      const on = c.classList.contains('tap');
+      c.classList.toggle('tap', !on);
+      c.classList.toggle('tap2', on);
       pos++;
       if (pos === seq.length) round();
     };
@@ -586,6 +589,7 @@
   }
 
   let notice = '';
+  let seen = false;
 
   function exportRecords() {
     const d = store.all();
@@ -607,7 +611,7 @@
   function homeView() {
     const rows = TESTS.map((t, i) => {
       const s = stats(t);
-      return h('a', { class: 'row', href: `#/${t.id}`, style: `--d:${i}` },
+      return h('a', { class: 'row', href: `#/${t.id}`, style: `--d:${seen ? (i * .3).toFixed(1) : i}` },
         h('span', { class: 'no', text: pad(i + 1) }),
         h('span', { class: 'name', text: t.name }),
         h('span', { class: 'rule', text: t.rule }),
@@ -615,6 +619,7 @@
           h('b', { text: fmt(t, s.best) }),
           h('small', { text: s.n ? unitOf(t, s.best) : 'no record' })));
     });
+    seen = true;
     let armed = false;
     const erase = h('button', { class: 'link label', type: 'button', text: 'Erase records' });
     erase.addEventListener('click', () => {
