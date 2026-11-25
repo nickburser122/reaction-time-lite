@@ -53,9 +53,3 @@ Two skins share one layout, one script and one set of sizes.
 - `css/style.css` Calm visuals and shared layout
 - `css/bold.css` Bold skin and header tools
 - `js/app.js` router, tests, records
-
-## Status
-
-- Choice, Stroop, export and import are implemented but have not been played through in a browser; that pass is still pending, as is the earlier one for the original six tests.
-- Not deployed.
-- The original `datakid/reaction-time` repository was not read; this is a fresh build around the same idea.
