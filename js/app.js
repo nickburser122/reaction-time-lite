@@ -386,6 +386,71 @@
     place();
   }
 
+  function timing(stage, sc, done) {
+    const TOTAL = 5;
+    const GOAL = .75;
+    const errs = [];
+    const shown = [];
+    let state = 'hold';
+    let t0 = 0;
+    let dur = 0;
+    let w = 0;
+    const big = h('div', { class: 'big' });
+    const sub = h('div', { class: 'label' });
+    const dot = h('i');
+    const track = h('div', { class: 'track' }, h('b'), dot);
+    const dots = Array.from({ length: TOTAL }, () => h('i'));
+    const field = h('div', { class: 'field col timing' }, h('div', { class: 'readout' }, big, sub), track, h('div', { class: 'pips' }, dots));
+    stage.replaceChildren(field);
+
+    const set = (s, b, l) => {
+      state = s;
+      big.textContent = b;
+      sub.textContent = l;
+      field.classList.toggle('off', s === 'missed');
+      dots.forEach((d, i) => d.classList.toggle('on', i < errs.length));
+    };
+    const move = () => {
+      if (state !== 'run') return;
+      const p = (performance.now() - t0) / dur;
+      if (p >= 1) return set('missed', 'Missed', 'Press to retry');
+      dot.style.transform = `translate3d(${(p * w).toFixed(1)}px,0,0)`;
+      sc.frame(move);
+    };
+    const arm = () => {
+      set('hold', '', '');
+      track.classList.remove('on');
+      sc.after(rand(500, 1300), () => {
+        dur = rand(1200, 2400);
+        w = track.clientWidth;
+        dot.style.transform = 'translate3d(0,0,0)';
+        track.classList.add('on');
+        sc.frame(() => {
+          t0 = performance.now();
+          state = 'run';
+          move();
+        });
+      });
+    };
+    const press = () => {
+      const now = performance.now();
+      if (state === 'run') {
+        const e = Math.round(now - t0 - dur * GOAL);
+        const a = Math.abs(e);
+        errs.push(a);
+        shown.push((e < 0 ? '−' : e ? '+' : '') + a);
+        set('shown', shown[shown.length - 1], `ms ${e < 0 ? 'early' : e ? 'late' : 'exact'} · press to ${errs.length < TOTAL ? 'continue' : 'finish'}`);
+      } else if (state === 'missed') arm();
+      else if (state === 'shown') {
+        if (errs.length < TOTAL) arm();
+        else done(avg(errs), shown.join(' · ') + ' ms');
+      }
+    };
+    sc.on(field, 'pointerdown', e => { e.preventDefault(); press(); });
+    sc.on(document, 'keydown', e => { if (isPress(e)) { e.preventDefault(); press(); } });
+    arm();
+  }
+
   function sequence(stage, sc, done) {
     const seq = [];
     let pos = 0;
@@ -548,15 +613,66 @@
     round();
   }
 
+  function order(stage, sc, done) {
+    const SIDE = 5;
+    const MAX = SIDE * SIDE;
+    let n = 4;
+    let pos = 0;
+    let open = false;
+    const count = h('div', { class: 'label corner' });
+    const board = h('div', { class: 'board order', style: `--n:${SIDE}` });
+    stage.replaceChildren(h('div', { class: 'field plain' }, board, count));
+
+    const round = () => {
+      pos = 0;
+      count.textContent = `${n} numbers`;
+      const at = shuffle([...Array(MAX).keys()]).slice(0, n);
+      board.classList.remove('masked');
+      board.replaceChildren(...Array.from({ length: MAX }, (_, i) => {
+        const k = at.indexOf(i);
+        return k < 0 ? h('span') : h('button', { class: 'cell', type: 'button', 'data-k': k, text: String(k + 1) });
+      }));
+      open = true;
+    };
+    const pick = c => {
+      if (!open || c.classList.contains('hit')) return;
+      if (+c.dataset.k !== pos) {
+        open = false;
+        board.classList.remove('masked');
+        c.classList.add('wrong');
+        sc.after(1300, () => done(n > 4 ? n - 1 : 0, `Missed number ${pos + 1} of ${n}`));
+        return;
+      }
+      c.classList.add('hit');
+      board.classList.add('masked');
+      if (++pos < n) return;
+      open = false;
+      if (n === MAX) return done(MAX, 'Board cleared');
+      n++;
+      sc.after(500, round);
+    };
+    sc.on(board, 'pointerdown', e => {
+      const c = e.target.closest('.cell');
+      if (c) { e.preventDefault(); pick(c); }
+    });
+    sc.on(board, 'click', e => {
+      const c = e.target.closest('.cell');
+      if (c && e.detail === 0) pick(c);
+    });
+    round();
+  }
+
   const TESTS = [
     { id: 'reaction', name: 'Reaction', unit: 'ms', lower: true, rule: 'Press the moment the field lights. Five trials.', run: reaction },
     { id: 'inhibit', name: 'Go / No-Go', unit: 'ms', lower: true, rule: 'Press for the disc. Hold for the square.', run: inhibit },
     { id: 'choice', name: 'Choice', unit: 'ms', lower: true, rule: 'Follow the arrow. Arrow keys or tap that side.', run: choice },
     { id: 'stroop', name: 'Stroop', unit: 'ms', lower: true, rule: 'Name the ink, not the word. Keys R G B Y.', run: stroop },
     { id: 'aim', name: 'Aim', unit: 'ms', lower: true, rule: 'Hit twenty targets. Mean time per target.', run: aim },
+    { id: 'timing', name: 'Timing', unit: 'ms', lower: true, rule: 'Press as the dot crosses the line. Mean error.', run: timing },
     { id: 'sequence', name: 'Sequence', unit: 'steps', lower: false, rule: 'Repeat the pattern. It grows by one.', run: sequence },
     { id: 'digits', name: 'Digits', unit: 'digits', lower: false, rule: 'Read the number. Type it back.', run: digits },
-    { id: 'grid', name: 'Grid', unit: 'levels', lower: false, rule: 'Recall the lit tiles. Three lives.', run: grid }
+    { id: 'grid', name: 'Grid', unit: 'levels', lower: false, rule: 'Recall the lit tiles. Three lives.', run: grid },
+    { id: 'order', name: 'Order', unit: 'numbers', lower: false, rule: 'Tap the numbers in order. They hide after the first.', run: order }
   ];
 
   const fmt = (t, v) => (v == null ? '—' : t.unit === 'ms' ? String(Math.round(v)) : Number.isInteger(v) ? String(v) : v.toFixed(1));
@@ -664,7 +780,7 @@
     return h('section', { class: 'home' },
       h('div', { class: 'head' },
         h('h1', null, 'Reaction ', h('em', { text: 'Time' })),
-        h('p', { class: 'label', text: 'Eight measures of speed and memory' })),
+        h('p', { class: 'label', text: 'Ten measures of speed, timing and memory' })),
       h('div', { class: 'index' }, rows),
       h('div', { class: 'foot' },
         h('span', { class: 'label' + (note ? ' note' : ''), role: 'status', text: note || 'Records stay in this browser' }),

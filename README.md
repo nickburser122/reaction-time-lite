@@ -1,6 +1,16 @@
 # Reaction Time
 
-Static single-page trainer for reaction speed and memory, eight tests. English only, no build step, no backend, no network requests beyond its own files.
+Static single-page trainer for reaction speed and memory, ten tests. English only, no build step, no backend, no network requests beyond its own files. Works offline after the first load.
+
+Copied from `github.com/nickburser122/reaction-time-lite`. Not deployed yet; there is no public URL.
+
+## Version 3
+
+- Offline: `sw.js` caches the page, both stylesheets, the script and all five fonts on the first visit. Later visits are served from that cache and refreshed in the background, so an update shows on the second load after it ships. Needs HTTPS or localhost.
+- Timing (new): a dot sweeps along a track at a random speed; press as it crosses the line. Five trials, score is the mean error in ms. Letting the dot run off the end is retried.
+- Order (new): numbers appear on a 5x5 board; tap them in ascending order. They hide after the first tap. Starts at 4, grows by one, one mistake ends the run. Score is the longest set cleared.
+- No sound test: audio output latency differs too much between devices to compare results.
+- Stored records are untouched; the two new tests use the ids `timing` and `order` in the same object.
 
 ## Version 2
 
@@ -40,13 +50,15 @@ Two skins share one layout, one script and one set of sizes.
 | `#/choice` | Choice: 20 arrows, left or right, mean ms of correct answers, runs under 80% accuracy are not recorded |
 | `#/stroop` | Stroop: 20 colour words (8 matching, 12 clashing), answer the ink colour, mean ms of correct answers, interference shown per run, runs under 80% accuracy are not recorded |
 | `#/aim` | Aim: 20 targets, mean ms per target, misses counted |
+| `#/timing` | Timing: five sweeps, press on the line, mean error in ms, overruns are retried |
 | `#/sequence` | Sequence: 3x3 pattern that grows by one, score is the longest sequence repeated |
 | `#/digits` | Digits: number span starting at 3 digits, score is the longest number recalled |
 | `#/grid` | Grid: tile pattern recall, three lives, score is the highest level cleared |
+| `#/order` | Order: numbers on a 5x5 board tapped in ascending order, hidden after the first tap, score is the longest set cleared |
 
 ## Controls
 
-- Space or Enter starts a test and responds in Reaction and Go / No-Go; pointer and touch work everywhere.
+- Space or Enter starts a test and responds in Reaction, Go / No-Go and Timing; pointer and touch work everywhere.
 - Choice: Left and Right arrow keys, or tap that half of the stage.
 - Stroop: R, G, B, Y keys, or the four buttons under the word.
 - In Choice and Stroop a wrong answer or no answer within 2.5 s counts as an error; presses before the cue are ignored.
@@ -66,6 +78,7 @@ Two skins share one layout, one script and one set of sizes.
 - `css/style.css` font faces, Calm visuals and shared layout
 - `css/bold.css` Bold skin and header tools
 - `js/app.js` router, tests, records
+- `sw.js` offline cache; add any new file to its `ASSETS` list
 - `fonts/` Geist, Geist Mono, JetBrains Mono (variable weight) and Instrument Serif regular and italic, WOFF2, Latin subset
 
 ## Fonts

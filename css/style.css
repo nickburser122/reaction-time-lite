@@ -174,6 +174,19 @@ main>*{animation:fade .5s var(--ease) both}
 .entry{width:min(100%,560px);padding:8px 0;border:0;border-bottom:1.5px solid color-mix(in srgb,var(--ink) 35%,transparent);border-radius:0;outline:none;background:transparent;color:var(--ink);caret-color:var(--acc);font:400 clamp(2rem,9cqw,4rem)/1.2 var(--mono);letter-spacing:.04em;text-align:center;transition:border-color .2s}
 .entry:focus{border-color:var(--acc)}
 
+.track{position:relative;width:min(78cqw,560px);height:44px;margin-top:26px}
+.track::before{content:'';position:absolute;inset:50% 0 auto;height:1px;background:color-mix(in srgb,var(--ink) 30%,transparent)}
+.track b{position:absolute;left:75%;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--acc)}
+.track i{position:absolute;left:-7px;top:50%;width:14px;height:14px;margin-top:-7px;border-radius:50%;background:var(--ink);opacity:0;will-change:transform}
+.track.on i{opacity:1}
+.timing .big{min-height:1em}
+.timing.off .big{color:var(--stop)}
+
+.board.order{grid-template-rows:repeat(var(--n),1fr)}
+.board.order .cell{color:var(--ink);font:500 clamp(1rem,5.5cqw,1.9rem)/1 var(--mono);font-variant-numeric:tabular-nums}
+.board.order .cell.hit{color:var(--on)}
+.board.order.masked .cell{color:transparent}
+
 @keyframes fade{from{opacity:0}}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}}
 @keyframes ping{from{box-shadow:inset 0 0 0 1.5px var(--acc),0 0 0 0 color-mix(in srgb,var(--acc) 40%,transparent)}to{box-shadow:inset 0 0 0 1.5px var(--acc),0 0 0 22px transparent}}
